@@ -9,8 +9,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["kobaltz"]
   spec.email         = ["dave@k-innovations.net"]
   spec.summary       = %q{Ruby Gem for controlling Bipolar and Unipolar motors}
-  spec.description   = %q{Ruby Gem for controlling Bipolar and Unipolar motors}
-  spec.homepage      = ""
+  spec.description   = %q{Ruby Gem for controlling Bipolar and Unipolar Stepper Motors}
+  spec.homepage      = "https://github.com/kobaltz"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
@@ -20,6 +20,6 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "bundler", "~> 1.7"
   spec.add_development_dependency "rake", "~> 10.0"
-  
-  spec.add_dependency "wiringpi"
+
+  spec.add_dependency "wiringpi", '~> 0'
 end
