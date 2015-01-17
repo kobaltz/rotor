@@ -1,9 +1,7 @@
 require 'wiringpi'
-#require 'pi_piper'
 
 module Rotor
   class Stepper
-    include PiPiper
     def initialize(coil_A_1_pin, coil_A_2_pin, coil_B_1_pin, coil_B_2_pin, enable_pin=nil)
       @io = WiringPi::GPIO.new(WPI_MODE_GPIO)
       @coil_A_1_pin = coil_A_1_pin
