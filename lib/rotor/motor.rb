@@ -2,7 +2,7 @@ require 'wiringpi'
 
 module Rotor
   class Stepper
-    def initialize(coil_A_1_pin, coil_A_2_pin, coil_B_1_pin, coil_B_2_pin, enable_pin=nil)
+    def initialize(coil_A_1_pin, coil_A_2_pin, coil_B_1_pin, coil_B_2_pin, enable_pin=nil, homing_switch, homing_normally)
       @io = WiringPi::GPIO.new(WPI_MODE_GPIO)
       @coil_A_1_pin = coil_A_1_pin
       @coil_A_2_pin = coil_A_2_pin
@@ -10,6 +10,8 @@ module Rotor
       @coil_B_2_pin = coil_B_2_pin
       @enable_pin = enable_pin
 
+      @homing_switch = homing_switch
+      @homing_normally = homing_normally
       [@coil_A_1_pin, @coil_A_2_pin, @coil_B_1_pin, @coil_B_2_pin].each do |pin|
         `echo #{pin} > /sys/class/gpio/unexport`
         @io.mode(pin,OUTPUT)
@@ -59,14 +61,14 @@ module Rotor
       @io.write(@coil_B_2_pin, w4)
     end
 
-    def set_home(coord=0, direction, homing_switch, homing_normally)
-      `echo #{homing_switch} > /sys/class/gpio/unexport`
-      @io.mode(homing_switch,INPUT)
+    def set_home(direction)
+      `echo #{@homing_switch} > /sys/class/gpio/unexport`
+      @io.mode(@homing_switch,INPUT)
       @move = true
       while @move == true
-        backwards(2,1) if direction == :backwards #&& @io.read(homing_switch) == homing_normally
-        forward(2,1) if direction == :forward #&& @io.read(homing_switch) == homing_normally
-        @move = false unless @io.read(homing_switch) == homing_normally
+        backwards(2,1) if direction == :backwards #&& @io.read(@homing_switch) == @homing_normally
+        forward(2,1) if direction == :forward #&& @io.read(@homing_switch) == @homing_normally
+        @move = false unless @io.read(@homing_switch) == @homing_normally
       end
     end
 
