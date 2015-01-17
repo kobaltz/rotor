@@ -1,9 +1,9 @@
 require 'wiringpi'
-require 'pi_piper'
+#require 'pi_piper'
 
 module Rotor
-  include PiPiper
   class Stepper
+    include PiPiper
     def initialize(coil_A_1_pin, coil_A_2_pin, coil_B_1_pin, coil_B_2_pin, enable_pin=nil)
       @io = WiringPi::GPIO.new(WPI_MODE_GPIO)
       @coil_A_1_pin = coil_A_1_pin
@@ -61,28 +61,20 @@ module Rotor
       @io.write(@coil_B_2_pin, w4)
     end
 
-    def set_home(x_coord=0, y_coord=0, x_homing_switch, y_homing_switch, x_homing_normally_open, y_homing_normally_open)
-      x_homing_normally_open ? x_homing_logic = :high : x_homing_logic = :low
-      y_homing_normally_open ? y_homing_logic = :high : y_homing_logic = :low
+    def set_home(coord=0, direction, homing_switch, homing_normally)
+      `echo #{homing_switch} > /sys/class/gpio/unexport`
+      @io.mode(homing_switch,INPUT)
+      @move = true
 
-      @x_move = true
-      @y_move = true
-
-      while @x_move == true
-        self.backwards(10,5)
+      while @move == true
+        backwards(10,5) if direction == :backwards && @io.read(homing_switch) == homing_normally
+        forward(10,5) if direction == :forward && @io.read(homing_switch) == homing_normally
       end
 
-      while @y_move == true
-        self.forward(10,5)
-      end      
-      
-      after :pin => x_homing_switch, :goes => x_homing_logic do
-        @x_move = false
-      end
+      #after :pin => homing_switch, :goes => homing_normally_open do
+      #  @move = false
+      #end
 
-      after :pin => y_homing_switch, :goes => y_homing_logic do
-        @y_move = false
-      end      
     end
 
   end
