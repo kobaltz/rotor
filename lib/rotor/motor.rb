@@ -61,7 +61,7 @@ module Rotor
       @io.write(@coil_B_2_pin, w4)
     end
 
-    def set_home(x_coord=0, y_coord=0, x_homing_switch, y_homing_switch, x_homing_normally_open=true, y_homing_normally_open=true)
+    def set_home(x_coord=0, y_coord=0, x_homing_switch, y_homing_switch, x_homing_normally_open, y_homing_normally_open)
       x_homing_normally_open ? x_homing_logic = :high : x_homing_logic = :low
       y_homing_normally_open ? y_homing_logic = :high : y_homing_logic = :low
 
@@ -84,6 +84,6 @@ module Rotor
         @y_move = false
       end      
     end
-    
+
   end
 end
