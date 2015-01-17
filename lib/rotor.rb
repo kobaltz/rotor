@@ -1,5 +1,4 @@
 require "rotor/version"
-require 'rotor/motor'
+require 'rotor/stepper'
 module Rotor
-  # Your code goes here...
 end
