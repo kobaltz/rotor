@@ -12,6 +12,7 @@ module Rotor
 
       @homing_switch = homing_switch
       @homing_normally = homing_normally
+
       [@coil_A_1_pin, @coil_A_2_pin, @coil_B_1_pin, @coil_B_2_pin].each do |pin|
         `echo #{pin} > /sys/class/gpio/unexport`
         @io.mode(pin,OUTPUT)
@@ -62,14 +63,35 @@ module Rotor
     end
 
     def set_home(direction)
+      puts "Setting #{direction} with Homing on GPIO #{@homing_switch}"
       `echo #{@homing_switch} > /sys/class/gpio/unexport`
       @io.mode(@homing_switch,INPUT)
       @move = true
       while @move == true
-        backwards(10,5) if direction == :backwards && @io.read(@homing_switch) == @homing_normally
-        forward(10,5) if direction == :forward && @io.read(@homing_switch) == @homing_normally
+        backwards(2,1) if direction == :backwards #&& @io.read(@homing_switch) == @homing_normally
+        forward(2,1) if direction == :forward #&& @io.read(@homing_switch) == @homing_normally
+        @move = false unless @io.read(@homing_switch) == @homing_normally
       end
     end
 
+    def at_home?
+      `echo #{@homing_switch} > /sys/class/gpio/unexport`
+      @io.mode(@homing_switch,INPUT)
+      if @io.read(@homing_switch) == @homing_normally
+        return true
+      else
+        return false
+      end
+    end
+
+      def at_safe_area?
+      `echo #{@homing_switch} > /sys/class/gpio/unexport`
+      @io.mode(@homing_switch,INPUT)
+      if @io.read(@homing_switch) == @homing_normally
+        return false
+      else
+        return true
+      end
+    end  
   end
 end
