@@ -25,6 +25,11 @@ module Rotor
         @io.write(@enable_pin,LOW)
         @io.write(@enable_pin,HIGH)
       end
+
+      unless @homing_switch == nil
+        `echo #{@homing_switch} > /sys/class/gpio/unexport`
+        @io.mode(@homing_switch,INPUT)
+      end
     end
 
     def forward(delay=5,steps=100)
@@ -64,8 +69,6 @@ module Rotor
 
     def set_home(direction)
       puts "Setting #{direction} with Homing on GPIO #{@homing_switch}"
-      `echo #{@homing_switch} > /sys/class/gpio/unexport`
-      @io.mode(@homing_switch,INPUT)
       @move = true
       while @move == true
         backwards(2,1) if direction == :backwards #&& @io.read(@homing_switch) == @homing_normally
@@ -75,8 +78,6 @@ module Rotor
     end
 
     def at_home?
-      `echo #{@homing_switch} > /sys/class/gpio/unexport`
-      @io.mode(@homing_switch,INPUT)
       if @io.read(@homing_switch) == @homing_normally
         return true
       else
@@ -85,8 +86,6 @@ module Rotor
     end
 
       def at_safe_area?
-      `echo #{@homing_switch} > /sys/class/gpio/unexport`
-      @io.mode(@homing_switch,INPUT)
       if @io.read(@homing_switch) == @homing_normally
         return false
       else
