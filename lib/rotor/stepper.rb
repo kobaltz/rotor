@@ -60,12 +60,6 @@ module Rotor
       end
     end
 
-    def set_step(w1, w2, w3, w4)
-      @io.write(@coil_A_1_pin, w1)
-      @io.write(@coil_A_2_pin, w2)
-      @io.write(@coil_B_1_pin, w3)
-      @io.write(@coil_B_2_pin, w4)
-    end
 
     def set_home(direction)
       puts "Setting #{direction} with Homing on GPIO #{@homing_switch}"
@@ -91,6 +85,15 @@ module Rotor
       else
         return true
       end
+    end
+
+    private
+
+    def set_step(w1, w2, w3, w4)
+      @io.write(@coil_A_1_pin, w1)
+      @io.write(@coil_A_2_pin, w2)
+      @io.write(@coil_B_1_pin, w3)
+      @io.write(@coil_B_2_pin, w4)
     end  
   end
 end

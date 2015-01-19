@@ -44,6 +44,8 @@ module Rotor
       end
     end
 
+    private
+
     def move_stepper(parsed_line,delay)
       threads = []
       [:x,:y,:z].each do |element|
@@ -71,7 +73,7 @@ module Rotor
 
       puts "Moving to G#{parsed_line[:g]} #{instance_variable_get(:"@x_move")}, #{instance_variable_get(:"@y_move")}, #{instance_variable_get(:"@z_move")}"
       threads.each { |thr| thr.join }
-    end
+    end    
 
     def parse_line(line)
       returned_json = {}

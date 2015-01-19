@@ -8,13 +8,6 @@ module Rotor
       @io.mode @pin, OUTPUT
     end
 
-    def pulser(freq,dur)
-      @io.write @pin, HIGH
-      sleep (freq/1000)
-      @io.write @pin, LOW
-      sleep ((dur-freq)/1000)
-    end
-
     def rotate(direction)
         if direction == :up
           freq = 1.0
@@ -25,5 +18,14 @@ module Rotor
         end
         25.times do;pulser(freq,20.0);end
     end
+
+    private
+
+    def pulser(freq,dur)
+      @io.write @pin, HIGH
+      sleep (freq/1000)
+      @io.write @pin, LOW
+      sleep ((dur-freq)/1000)
+    end    
   end
 end

@@ -16,6 +16,28 @@ or ULN2800 Integrated Controllers.
 
     gem install rotor
 
+# Notes
+
+  Class Stepper
+
+    stepper = Rotor::Stepper.new(initialize(coil_A_1_pin, coil_A_2_pin, coil_B_1_pin, coil_B_2_pin, enable_pin=nil, homing_switch, homing_normally)
+    stepper.forward(delay=5,steps=100)
+    stepper.backwards(delay=5,steps=100)
+    stepper.set_home(direction) #:forward or :backwards
+    stepper.at_home?
+    stepper.at_safe_area? #opposite of at_home?
+
+  Class Servo
+
+    servo = Rotor::Servo.new(pin=18)
+    servo.rotate(direction) # :up or :down
+
+  Class GCode
+
+    gcode = Rotor::Gcode.new(stepper_x=nil,stepper_y=nil,stepper_z=nil,scale=1,servo=nil)
+    gcode.open(file)
+    gcode.simulate
+
 # Usage
 
   The goal of this gem is to make controlling your robotics easier than
@@ -27,21 +49,21 @@ or ULN2800 Integrated Controllers.
   that the panel is moving in and therefore know which side it has hit. This
   was to reduce the number of GPIO pins required.
 
-  stepper_x = Rotor::Stepper.new(23,12,17,24,nil,13,LOW)
-  stepper_y = Rotor::Stepper.new(25, 4,21,22,nil,19,LOW)
+    stepper_x = Rotor::Stepper.new(23,12,17,24,nil,13,LOW)
+    stepper_y = Rotor::Stepper.new(25, 4,21,22,nil,19,LOW)
 
   You can use a servo to control the marker (or leave blank if you're using a Z Axis Stepper)
   This will be built out so that the strength control of the servo (for laser power) can be
   adjusted and inputs sent in. However, for development purposes, I recommend not playing with
   lasers, but rather get the machine and code working properly first.
 
-  servo = Rotor::Servo.new(18)
+    servo = Rotor::Servo.new(18)
 
   You can send the stepper motor to the outter edges of the board.
 
-  # stepper_x.set_home(:backwards)
-  # stepper_x.forward(1,100)
-  # stepper_y.set_home(:forward)
+    # stepper_x.set_home(:backwards)
+    # stepper_x.forward(1,100)
+    # stepper_y.set_home(:forward)
 
     stepper_x = Rotor::Stepper.new(4,17,23,24,18)
     stepper_y = Rotor::Stepper.new(25,12,16,21,18)
