@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["dave@k-innovations.net"]
   spec.summary       = %q{Ruby Gem for controlling Bipolar and Unipolar motors}
   spec.description   = %q{Ruby Gem for controlling Bipolar and Unipolar Stepper Motors}
-  spec.homepage      = "https://github.com/kobaltz"
+  spec.homepage      = "https://github.com/kobaltz/rotor"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
