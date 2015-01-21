@@ -19,6 +19,7 @@ module Rotor
 
       @file.each_line do |line|
         parsed_line = parse_line(line)
+        # puts "DEBUG::#{parsed_line}"
         if parsed_line[:g]
           #Move to this origin point.
           if parsed_line[:g] == 0
@@ -39,13 +40,15 @@ module Rotor
             elsif parsed_line[:z] && parsed_line[:f].nil? && parsed_line[:x].nil? && parsed_line[:y].nil? 
               puts "Raising marker::#{parsed_line}"
               @servo.rotate(:up) if @servo
+            elsif parsed_line[:z].nil? && parsed_line[:f] && parsed_line[:x].nil? && parsed_line[:y].nil? 
+              # Set feed/spin rate
             else
               puts "Move Stepper::#{parsed_line}"
               move_stepper(parsed_line,25)
             end
           elsif parsed_line[:g] == 2 || parsed_line[:g] == 3
             # Get my ARC on
-            puts "DEBUG::#{parsed_line}"
+            # puts "DEBUG::#{parsed_line}"
             x_start = @x
             x_end = parsed_line[:x]
 
@@ -63,16 +66,17 @@ module Rotor
             start_angle = Math.atan2((y_start - y_origin),(x_start - x_origin))
             end_angle = Math.atan2((y_end - y_origin),(x_end - x_origin))
 
-            steps = (end_angle - start_angle) / 25
+            steps = (end_angle - start_angle) / 1
 
             current_degrees = start_angle
 
-            25.times do
+            1.times do
+              current_degrees += steps
+              #puts "CURRENT_RADIAN:#{current_degrees}"
               arc_line = {}
               arc_line[:x] = x_origin + radius * Math.cos(current_degrees)
               arc_line[:y] = y_origin + radius * Math.sin(current_degrees)
               arc_line[:z] = nil
-              current_degrees += steps
               puts "Move Arc Stepper::#{arc_line}"
               move_stepper(arc_line,25)
             end
@@ -101,31 +105,68 @@ module Rotor
 
     def move_stepper(parsed_line,delay)
       threads = []
-      [:x,:y,:z].each do |element|
-        ets = element.to_s
-        instance_variable_set(:"@#{ets}_move",nil)    
-        if parsed_line[element]
-          instance_variable_set(:"@#{ets}_move",parsed_line[element])          
-          instance_variable_set(:"@#{ets}_move",0) unless instance_variable_get(:"@#{ets}_move")
-          instance_variable_set(:"@#{ets}_move",instance_variable_get(:"@#{ets}_move") * @scale)
+      @x_move = nil    
+      if parsed_line[:x]
+        @x_move = parsed_line[:x]        
+        @x_move ||= 0
+        @x_move *= @scale
 
-          instance_variable_set(:"@#{ets}_movement", (instance_variable_get(:"@#{ets}_move") - instance_variable_get(:"@#{ets}")).abs)
+        @x_movement = (@x_move - @x).abs
 
-          if instance_variable_get(:"@#{ets}_move").to_f > instance_variable_get(:"@#{ets}") #move to the right
-            if instance_variable_get(:"@stepper_#{ets}") && instance_variable_get(:"@stepper_#{ets}").at_safe_area?
-              threads << Thread.new { instance_variable_get(:"@stepper_#{ets}").forward(delay, instance_variable_get(:"@#{ets}_movement")) }
-            end
-          elsif instance_variable_get(:"@#{ets}_move").to_f < instance_variable_get(:"@#{ets}") #move to the left
-            if instance_variable_get(:"@stepper_#{ets}") && instance_variable_get(:"@stepper_#{ets}").at_safe_area?
-              threads << Thread.new { instance_variable_get(:"@stepper_#{ets}").backwards(delay, instance_variable_get(:"@#{ets}_movement")) } 
-            end
+        if @x_move.to_f > @x #move to the right
+          if @stepper_x # && @stepper_x.at_safe_area?
+            threads << Thread.new { @stepper_x.forward(delay, @x_movement) }
           end
-          instance_variable_set(:"@#{ets}",instance_variable_get(:"@#{ets}_move"))
+        elsif @x_move.to_f < @x #move to the left
+          if @stepper_x # && @stepper_x.at_safe_area?
+            threads << Thread.new { @stepper_x.backwards(delay, @x_movement) } 
+          end
         end
+        @x = @x_move
       end
 
-      #puts "Moving to G#{parsed_line[:g]} #{instance_variable_get(:"@x_move")}, #{instance_variable_get(:"@y_move")}, #{instance_variable_get(:"@z_move")}"
+      @y_move = nil    
+      if parsed_line[:y]
+        @y_move = parsed_line[:y]        
+        @y_move ||= 0
+        @y_move *= @scale
+
+        @y_movement = (@y_move - @y).abs
+
+        if @y_move.to_f > @y #move to the right
+          if @stepper_y # && @stepper_y.at_safe_area?
+            threads << Thread.new { @stepper_y.forward(delay, @y_movement) }
+          end
+        elsif @y_move.to_f < @y #move to the left
+          if @stepper_y # && @stepper_y.at_safe_area?
+            threads << Thread.new { @stepper_y.backwards(delay, @y_movement) } 
+          end
+        end
+        @y = @y_move
+      end
+
+      @z_move = nil    
+      if parsed_line[:z]
+        @z_move = parsed_line[:z]        
+        @z_move ||= 0
+        @z_move *= @scale
+
+        @z_movement = (@z_move - @z).abs
+
+        if @z_move.to_f > @z #move to the right
+          if @stepper_z # && @stepper_z.at_safe_area?
+            threads << Thread.new { @stepper_z.forward(delay, @z_movement) }
+          end
+        elsif @z_move.to_f < @z #move to the left
+          if @stepper_z # && @stepper_z.at_safe_area?
+            threads << Thread.new { @stepper_z.backwards(delay, @z_movement) } 
+          end
+        end
+        @z = @z_move
+      end      
+      # puts "Moving to G#{parsed_line[:g]} #{@x_move}(#{@x_movement}), #{@y_move}(#{@y_movement}), #{@z_move}(#{@z_movement})"
       threads.each { |thr| thr.join }
+      File.open("output.txt", 'a') { |file| file.write("#{@x_move},#{@y_move},#{@x_movement},#{@y_movement}\n") }
     end    
 
     def parse_line(line)
@@ -142,6 +183,8 @@ module Rotor
       data = line.match /#{node}(?<data>\d+[,.]\d+)/
       data ||= line.match /#{node}(?<data>\d+)/
       data ||= line.match /#{node}(?<data>-\d+[,.]\d+)/
+      data ||= line.match /#{node}(?<data>\d+[,.])/
+      data ||= line.match /#{node}(?<data>-\d+[,.])/
       if data
         case element
         when :g, :m
