@@ -14,7 +14,7 @@ module Rotor
       @homing_normally = homing_normally
 
       @step = 0
-      @ps = [[1,0,1,0],[1,0,0,0],[1,0,0,1],[0,0,0,1],[0,1,0,1],[0,1,0,0],[0,1,1,0],[0,0,1,0]]
+      @ps = [[1,0,1,0],[0,1,1,0],[0,1,0,1],[1,0,0,1]]
 
       [@coil_A_1_pin, @coil_A_2_pin, @coil_B_1_pin, @coil_B_2_pin].each do |pin|
         `echo #{pin} > /sys/class/gpio/unexport`
@@ -35,26 +35,13 @@ module Rotor
       end
     end
 
-    # def forward(delay=5,steps=100)
-    #   delay_time = delay/1000.0
-    #   (0..(steps * @steps_per_mm)).each do |i|
-    #     set_step(1, 0, 1, 0)
-    #     sleep delay_time
-    #     set_step(0, 1, 1, 0)
-    #     sleep delay_time
-    #     set_step(0, 1, 0, 1)
-    #     sleep delay_time
-    #     set_step(1, 0, 0, 1)
-    #     sleep delay_time
-    #   end
-    # end
-
     def forward(delay=5,steps=100)
       delay_time = delay/1000.0
       (0..(steps * @steps_per_mm)).each do |i|
         set_step(@ps[@step][0],@ps[@step][1],@ps[@step][2],@ps[@step][3])
         @step += 1
-        @step = 0 if @step == 8
+        @step = 0 if @step == 4
+        sleep delay_time
       end
     end
 
@@ -64,30 +51,18 @@ module Rotor
       (0..(steps * @steps_per_mm)).each do |i|
         set_step(@ps[@step][0],@ps[@step][1],@ps[@step][2],@ps[@step][3])
         @step -= 1
-        @step = 7 if @step == -1
+        @step = 3 if @step == -1
+        sleep delay_time
       end
+      
     end    
-    # def backwards(delay=5,steps=100)
-    #   delay_time = delay/1000.0
-    #   (0..(steps * @steps_per_mm)).each do |i|
-    #     set_step(1, 0, 0, 1)
-    #     sleep delay_time
-    #     set_step(0, 1, 0, 1)
-    #     sleep delay_time
-    #     set_step(0, 1, 1, 0)
-    #     sleep delay_time
-    #     set_step(1, 0, 1, 0)
-    #     sleep delay_time
-    #   end
-    # end
-
 
     def set_home(direction)
       puts "Setting #{direction} with Homing on GPIO #{@homing_switch}"
       @move = true
       while @move == true
-        backwards(2,1) if direction == :backwards #&& @io.read(@homing_switch) == @homing_normally
-        forward(2,1) if direction == :forward #&& @io.read(@homing_switch) == @homing_normally
+        backwards(1,1) if direction == :backwards #&& @io.read(@homing_switch) == @homing_normally
+        forward(1,1) if direction == :forward #&& @io.read(@homing_switch) == @homing_normally
         @move = false unless @io.read(@homing_switch) == @homing_normally
       end
     end
@@ -108,6 +83,10 @@ module Rotor
       end
     end
 
+    def power_down
+      set_step(0, 0, 0, 0)
+    end
+
     private
 
     def set_step(w1, w2, w3, w4)
@@ -115,9 +94,6 @@ module Rotor
       @io.write(@coil_A_2_pin, w2)
       @io.write(@coil_B_1_pin, w3)
       @io.write(@coil_B_2_pin, w4)
-    end
-
-    def phase
     end
   end
 end

@@ -12,33 +12,62 @@ or ULN2800 Integrated Controllers.
 
     gem install wiringpi
 
+  If you are using GPIO Pins from a A+/B+, you may need to update your
+  WiringPi libraries. You can pull from my repo https://github.com/kobaltz/WiringPi-Ruby
+
+  I did not write any of the WiringPi-Ruby platform. I simply pulled the latest C libraries
+  and recompiled the gem. 
+
   Install Rotor
 
     gem install rotor
 
 # Notes
 
-  Class Stepper
+  This gem has been built for my personal project. I do not and cannot know if this will
+  work with your setup. However, put in an issue if you're having troubles with this gem
+  and I will try to help you as best as I can.
+
+  I am using two stepper motors (NEMA17 Bipolar 20Ncm 12V) and two L293D motor drivers. This
+  gem has also been tested with a small 5V Unipolar Stepper Motor and 12V Unipolar Stepper Motor.
+
+  My Steps Per MM is based on a 200 step per revolution motor and a threaded rod with 20 threads per inch.
+  This means that I will have to step 4000 times to move the coupler one inch.
+
+# Usage
+
+  ## Class Stepper
+
+  MAKE SURE THAT YOU HAVE CONFIGURED THE Rotor::Stepper WITH THE CORRECT GPIO PIN NUMBERS. CHECK AND 
+  DOUBLE CHECK THESE BEFORE RUNNING YOUR CODE.
 
     stepper = Rotor::Stepper.new(coil_A_1_pin, coil_A_2_pin, coil_B_1_pin, coil_B_2_pin, enable_pin=nil, homing_switch, homing_normally,steps_per_mm)
-    stepper.forward(delay=5,steps=100)
+    stepper.forward(delay=5,steps=100) # stepper.forward(1,100)
     stepper.backwards(delay=5,steps=100)
     stepper.set_home(direction) #:forward or :backwards
     stepper.at_home?
-    stepper.at_safe_area? #opposite of at_home?
+    stepper.at_safe_area? # opposite of at_home?
 
-  Class Servo
+  After running your GCode, you may want to consider to power down the motor by sending a
+  LOW to each step.
+
+    stepper.power_down
+
+  ## Class Servo
 
     servo = Rotor::Servo.new(pin=18)
     servo.rotate(direction) # :up or :down
 
-  Class GCode
+  ## Class GCode
 
-    gcode = Rotor::Gcode.new(stepper_x=nil,stepper_y=nil,stepper_z=nil,scale=1,servo=nil)
-    gcode.open(file)
+  The plot points are streamed to output.txt file on your computer.
+
+  You can test the outputs of your GCODE and the XY plots it creates by Rotor.
+
+    File.open("output.txt", 'wb') { |file| file.write("x,y,xm,ym\n") }
+    gcode = Rotor::Gcode.new(nil,nil,nil,1,nil)
+    gcode.open('output.nc')
     gcode.simulate
-
-# Usage
 
   The goal of this gem is to make controlling your robotics easier than
   other solutions.
@@ -49,8 +78,8 @@ or ULN2800 Integrated Controllers.
   that the panel is moving in and therefore know which side it has hit. This
   was to reduce the number of GPIO pins required.
 
-    stepper_x = Rotor::Stepper.new(23,12,17,24,nil,13,LOW,6.74)
-    stepper_y = Rotor::Stepper.new(25, 4,21,22,nil,19,LOW,8.602)
+    stepper_x = Rotor::Stepper.new(23,12,17,24,nil,13,0,157.48)
+    stepper_y = Rotor::Stepper.new(25, 4,21,22,nil,19,0,157.48)
 
   You can use a servo to control the marker (or leave blank if you're using a Z Axis Stepper)
   This will be built out so that the strength control of the servo (for laser power) can be
@@ -65,8 +94,8 @@ or ULN2800 Integrated Controllers.
     # stepper_x.forward(1,100)
     # stepper_y.set_home(:forward)
 
-    stepper_x = Rotor::Stepper.new(23,12,17,24,nil,13,LOW,6.74)
-    stepper_y = Rotor::Stepper.new(25, 4,21,22,nil,19,LOW,8.602)
+    stepper_x = Rotor::Stepper.new(23,12,17,24,nil,13,LOW,157.48)
+    stepper_y = Rotor::Stepper.new(25, 4,21,22,nil,19,LOW,157.48)
     
     loop do
       puts "Enter steps forward::"
@@ -113,6 +142,55 @@ keep this at 1).
     threads << Thread.new { stepper_x.forward(5,text.to_i) }
     threads << Thread.new { stepper_y.forward(5,text.to_i) }
     threads.each { |thr| thr.join }
+
+# Sample Code
+
+  ## Production (Moving Stepper and Servo)
+  
+  Here is the real world sample code that I am using to plot
+
+    require 'rotor'
+    begin
+      stepper_x = Rotor::Stepper.new(23,12,17,24,nil,13,0,157.48)
+      stepper_y = Rotor::Stepper.new(25, 4,21,22,nil,19,0,157.48)
+      servo = Rotor::Servo.new(18)
+
+      stepper_x.set_home(:backwards)
+      stepper_y.set_home(:backwards)
+      stepper_x.forward(1,4000)
+      stepper_y.forward(1,4000)
+
+      gcode = Rotor::Gcode.new(stepper_x,stepper_y,nil,1,servo)
+      gcode.open('output.nc')
+      gcode.simulate
+
+    ensure
+      servo.rotate(:up)
+
+      stepper_x.set_home(:backwards)
+      stepper_y.set_home(:backwards)
+      stepper_x.forward(1,4000)
+      stepper_y.forward(1,4000)
+
+      stepper_x.power_down
+      stepper_y.power_down
+
+      [23,12,17,24,13,25,4,21,22,19,13].each do |pin|
+       `echo #{pin} > /sys/class/gpio/unexport`
+      end
+    end
+
+  ## Development (Exporting Plot Points for Graphing)
+
+  Before wasting more materials, I try to plot my points to a file and view them in Excel.
+  Within the root of this repository, there is an Excel file, called Visual.xlsx, and 
+  you can import the output.txt into the first four columns. By doing so, you can see the 
+  plot points and the scatter of movements.
+
+    File.open("output.txt", 'wb') { |file| file.write("x,y,xm,ym\n") }
+    gcode = Rotor::Gcode.new(nil,nil,nil,1,nil)
+    gcode.open('output.nc')
+    gcode.simulate
 
 # License
 

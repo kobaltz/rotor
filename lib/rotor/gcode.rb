@@ -17,9 +17,17 @@ module Rotor
       @y = 0
       @z = 0
 
+      line_num = 0
+      last_parsed_line = nil
+
       @file.each_line do |line|
+        puts "last_parsed_line::#{last_parsed_line}"
+        line = line.gsub("J-0.000000","J-0.000001") if last_parsed_line && last_parsed_line[:j] && last_parsed_line[:j] > 0.0
+        line = line.gsub("J-0.000000","J0.000001") if last_parsed_line && last_parsed_line[:j] && last_parsed_line[:j] < 0.0
+
         parsed_line = parse_line(line)
-        # puts "DEBUG::#{parsed_line}"
+        
+        line_num += 1
         if parsed_line[:g]
           #Move to this origin point.
           if parsed_line[:g] == 0
@@ -44,7 +52,7 @@ module Rotor
               # Set feed/spin rate
             else
               puts "Move Stepper::#{parsed_line}"
-              move_stepper(parsed_line,25)
+              move_stepper(parsed_line,10)
             end
           elsif parsed_line[:g] == 2 || parsed_line[:g] == 3
             # Get my ARC on
@@ -56,7 +64,11 @@ module Rotor
             y_end = parsed_line[:y]
 
             x_offset = parsed_line[:i]
+            x_offset = 0.0001 if x_offset == 0.0
+            x_offset = -0.0001 if x_offset == -0.0
             y_offset = parsed_line[:j]
+            y_offset = 0.0001 if y_offset == 0.0
+            y_offset = -0.0001 if y_offset == -0.0
 
             x_origin = x_offset + x_start
             y_origin = y_offset + y_start
@@ -66,24 +78,28 @@ module Rotor
             start_angle = Math.atan2((y_start - y_origin),(x_start - x_origin))
             end_angle = Math.atan2((y_end - y_origin),(x_end - x_origin))
 
-            steps = (end_angle - start_angle) / 1
+            number_of_precision = 5
+
+            steps = (end_angle - start_angle) / number_of_precision
 
             current_degrees = start_angle
 
-            1.times do
-              current_degrees += steps
-              #puts "CURRENT_RADIAN:#{current_degrees}"
-              arc_line = {}
-              arc_line[:x] = x_origin + radius * Math.cos(current_degrees)
-              arc_line[:y] = y_origin + radius * Math.sin(current_degrees)
-              arc_line[:z] = nil
-              puts "Move Arc Stepper::#{arc_line}"
-              move_stepper(arc_line,25)
+            number_of_precision.times do |i|
+              # unless i == (number_of_precision - 1)
+                current_degrees += steps
+                arc_line = {}
+                arc_line[:g] = parsed_line[:g]
+                arc_line[:x] = radius * Math.cos(current_degrees) + x_origin
+                arc_line[:y] = radius * Math.sin(current_degrees) + y_origin
+                arc_line[:z] = nil
+                puts "Move Arc Stepper (#{line_num})::#{arc_line},#{current_degrees}::#{y_offset}"
+                move_stepper(arc_line,10)
+              # end
             end
-
 
           else
             # puts "GLINE - Something else"
+            puts "DEBUG::GLINE - Something else::#{parsed_line}"
           end
         elsif parsed_line[:m]
           if line[0..2] == "M03"
@@ -94,10 +110,13 @@ module Rotor
             @servo.rotate(:up) if @servo
           else
             # puts "MLINE - Something else"
+            puts "DEBUG::MLINE - Something else::#{parsed_line}"
           end
         else
           # puts "Something else"
+          puts "DEBUG::????? - Something else::#{parsed_line}"
         end
+        last_parsed_line = parsed_line
       end
     end
 
@@ -166,7 +185,7 @@ module Rotor
       end      
       # puts "Moving to G#{parsed_line[:g]} #{@x_move}(#{@x_movement}), #{@y_move}(#{@y_movement}), #{@z_move}(#{@z_movement})"
       threads.each { |thr| thr.join }
-      File.open("output.txt", 'a') { |file| file.write("#{@x_move},#{@y_move},#{@x_movement},#{@y_movement}\n") }
+      File.open("output.txt", 'a') { |file| file.write("#{@x_move},#{@y_move},#{@x_movement},#{@y_movement}\n") } if File.exists?("output.txt")
     end    
 
     def parse_line(line)
