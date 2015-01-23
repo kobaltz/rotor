@@ -21,9 +21,9 @@ module Rotor
       last_parsed_line = nil
 
       @file.each_line do |line|
-        puts "last_parsed_line::#{last_parsed_line}"
-        line = line.gsub("J-0.000000","J-0.000001") if last_parsed_line && last_parsed_line[:j] && last_parsed_line[:j] > 0.0
-        line = line.gsub("J-0.000000","J0.000001") if last_parsed_line && last_parsed_line[:j] && last_parsed_line[:j] < 0.0
+        # puts "last_parsed_line::#{last_parsed_line}"
+        # line = line.gsub("J-0.000000","J-0.000001") if last_parsed_line && last_parsed_line[:j] && last_parsed_line[:j] > 0.0
+        # line = line.gsub("J-0.000000","J0.000001") if last_parsed_line && last_parsed_line[:j] && last_parsed_line[:j] < 0.0
 
         parsed_line = parse_line(line)
         
@@ -52,50 +52,64 @@ module Rotor
               # Set feed/spin rate
             else
               puts "Move Stepper::#{parsed_line}"
-              move_stepper(parsed_line,10)
+              move_stepper(parsed_line,1)
             end
           elsif parsed_line[:g] == 2 || parsed_line[:g] == 3
             # Get my ARC on
             # puts "DEBUG::#{parsed_line}"
+            ignore = false
+
             x_start = @x
             x_end = parsed_line[:x]
 
             y_start = @y
             y_end = parsed_line[:y]
 
-            x_offset = parsed_line[:i]
-            x_offset = 0.0001 if x_offset == 0.0
-            x_offset = -0.0001 if x_offset == -0.0
-            y_offset = parsed_line[:j]
-            y_offset = 0.0001 if y_offset == 0.0
-            y_offset = -0.0001 if y_offset == -0.0
+            if parsed_line[:i] && parsed_line[:j] && parsed_line[:r].nil?
+              x_offset = parsed_line[:i]
+              # x_offset = 0.0001 if x_offset == 0.0
+              # x_offset = -0.0001 if x_offset == -0.0
+              y_offset = parsed_line[:j]
+              # y_offset = 0.0001 if y_offset == 0.0
+              # y_offset = -0.0001 if y_offset == -0.0
 
-            x_origin = x_offset + x_start
-            y_origin = y_offset + y_start
+              x_origin = x_offset + x_start
+              y_origin = y_offset + y_start
 
-            radius = Math.sqrt((x_start - x_origin) ** 2 + (y_start - y_origin) ** 2)
+              radius = Math.sqrt((x_start - x_origin) ** 2 + (y_start - y_origin) ** 2)
+       
+            elsif parsed_line[:i].nil? && parsed_line[:j].nil? && parsed_line[:r]
+              ignore = true
+            end
 
-            start_angle = Math.atan2((y_start - y_origin),(x_start - x_origin))
-            end_angle = Math.atan2((y_end - y_origin),(x_end - x_origin))
+            unless ignore
+              distance = Math.sqrt((x_start - x_end) ** 2 + (y_start - y_end) ** 2)
+              number_of_precision = [distance.to_i,4].max
+              start_angle = Math.atan2((y_start - y_origin),(x_start - x_origin))
+              end_angle = Math.atan2((y_end - y_origin),(x_end - x_origin))
 
-            number_of_precision = 5
+              if start_angle - end_angle > Math::PI
+                end_angle += Math::PI * 2
+                # puts "Move Arc Stepper (#{line_num})::Insert Fix"
+              elsif start_angle - end_angle < -Math::PI
+                end_angle *= -1
+                # puts "Move Arc Stepper (#{line_num})::Insert Fix 2"
+              end
 
-            steps = (end_angle - start_angle) / number_of_precision
-
-            current_degrees = start_angle
+              steps = (end_angle - start_angle) / number_of_precision
+              current_degrees = start_angle
+            end
 
             number_of_precision.times do |i|
-              # unless i == (number_of_precision - 1)
-                current_degrees += steps
-                arc_line = {}
-                arc_line[:g] = parsed_line[:g]
-                arc_line[:x] = radius * Math.cos(current_degrees) + x_origin
-                arc_line[:y] = radius * Math.sin(current_degrees) + y_origin
-                arc_line[:z] = nil
-                puts "Move Arc Stepper (#{line_num})::#{arc_line},#{current_degrees}::#{y_offset}"
-                move_stepper(arc_line,10)
-              # end
-            end
+              current_degrees += steps
+              arc_line = {}
+              arc_line[:g] = parsed_line[:g]
+              arc_line[:x] = radius * Math.cos(current_degrees) + x_origin
+              arc_line[:y] = radius * Math.sin(current_degrees) + y_origin
+              arc_line[:z] = nil
+              puts "Move Arc Stepper (#{line_num})::#{arc_line}::#{start_angle},#{end_angle}"
+              move_stepper(arc_line,1)
+            end unless ignore
 
           else
             # puts "GLINE - Something else"
@@ -132,11 +146,11 @@ module Rotor
 
         @x_movement = (@x_move - @x).abs
 
-        if @x_move.to_f > @x #move to the right
+        if @x_move.to_f < @x #move to the right
           if @stepper_x # && @stepper_x.at_safe_area?
             threads << Thread.new { @stepper_x.forward(delay, @x_movement) }
           end
-        elsif @x_move.to_f < @x #move to the left
+        elsif @x_move.to_f > @x #move to the left
           if @stepper_x # && @stepper_x.at_safe_area?
             threads << Thread.new { @stepper_x.backwards(delay, @x_movement) } 
           end
@@ -152,11 +166,11 @@ module Rotor
 
         @y_movement = (@y_move - @y).abs
 
-        if @y_move.to_f > @y #move to the right
+        if @y_move.to_f < @y #move to the right
           if @stepper_y # && @stepper_y.at_safe_area?
             threads << Thread.new { @stepper_y.forward(delay, @y_movement) }
           end
-        elsif @y_move.to_f < @y #move to the left
+        elsif @y_move.to_f > @y #move to the left
           if @stepper_y # && @stepper_y.at_safe_area?
             threads << Thread.new { @stepper_y.backwards(delay, @y_movement) } 
           end
@@ -172,11 +186,11 @@ module Rotor
 
         @z_movement = (@z_move - @z).abs
 
-        if @z_move.to_f > @z #move to the right
+        if @z_move.to_f < @z #move to the right
           if @stepper_z # && @stepper_z.at_safe_area?
             threads << Thread.new { @stepper_z.forward(delay, @z_movement) }
           end
-        elsif @z_move.to_f < @z #move to the left
+        elsif @z_move.to_f > @z #move to the left
           if @stepper_z # && @stepper_z.at_safe_area?
             threads << Thread.new { @stepper_z.backwards(delay, @z_movement) } 
           end
@@ -190,7 +204,7 @@ module Rotor
 
     def parse_line(line)
       returned_json = {}
-      values = [:g,:x,:y,:z,:i,:j,:k,:m,:f]
+      values = [:g,:x,:y,:z,:i,:j,:k, :r, :m,:f]
       values.each do |element|
         returned_json[element] = find_value(element,line)
       end
@@ -208,7 +222,7 @@ module Rotor
         case element
         when :g, :m
           return data[:data].to_i
-        when :x,:y,:z,:i,:j,:k,:f
+        when :x,:y,:z,:i,:j,:k,:r,:f
           return data[:data].to_f
         end
       else

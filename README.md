@@ -53,12 +53,14 @@ or ULN2800 Integrated Controllers.
 
     stepper.power_down
 
-  ## Class Servo
+## Class Servo
 
     servo = Rotor::Servo.new(pin=18)
     servo.rotate(direction) # :up or :down
 
-  ## Class GCode
+## Class GCode
+
+  There was a bug when calculating the start and end angles. This has been fixed.
 
   The plot points are streamed to output.txt file on your computer.
 
@@ -145,7 +147,7 @@ keep this at 1).
 
 # Sample Code
 
-  ## Production (Moving Stepper and Servo)
+## Production (Moving Stepper and Servo)
   
   Here is the real world sample code that I am using to plot
 
@@ -180,7 +182,7 @@ keep this at 1).
       end
     end
 
-  ## Development (Exporting Plot Points for Graphing)
+## Development (Exporting Plot Points for Graphing)
 
   Before wasting more materials, I try to plot my points to a file and view them in Excel.
   Within the root of this repository, there is an Excel file, called Visual.xlsx, and 
