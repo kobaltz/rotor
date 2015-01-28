@@ -12,19 +12,14 @@ module Rotor
       @file = File.open(file)
     end
 
-    def simulate
+    def simulate(accuracy=8,speed=1)
       @x = 0
       @y = 0
       @z = 0
 
       line_num = 0
-      last_parsed_line = nil
 
       @file.each_line do |line|
-        # puts "last_parsed_line::#{last_parsed_line}"
-        # line = line.gsub("J-0.000000","J-0.000001") if last_parsed_line && last_parsed_line[:j] && last_parsed_line[:j] > 0.0
-        # line = line.gsub("J-0.000000","J0.000001") if last_parsed_line && last_parsed_line[:j] && last_parsed_line[:j] < 0.0
-
         parsed_line = parse_line(line)
         
         line_num += 1
@@ -34,29 +29,32 @@ module Rotor
             if parsed_line[:z] && parsed_line[:f] && parsed_line[:x].nil? && parsed_line[:y].nil? 
               puts "Lowering marker"
               @servo.rotate(:down) if @servo
+              @stepper_z.forward(5,25) if @stepper_z
             elsif parsed_line[:z] && parsed_line[:f].nil? && parsed_line[:x].nil? && parsed_line[:y].nil? 
               puts "Raising marker::#{parsed_line}"
+              @stepper_z.backwards(5,25) if @stepper_z
               @servo.rotate(:up) if @servo
             else
               puts "Move Stepper::#{parsed_line}"
-              move_stepper(parsed_line,1)
+              move_stepper(parsed_line,speed)
             end
           elsif parsed_line[:g] == 1
             if parsed_line[:z] && parsed_line[:f] && parsed_line[:x].nil? && parsed_line[:y].nil? 
               puts "Lowering marker"
               @servo.rotate(:down) if @servo
+              @stepper_z.forward(5,25) if @stepper_z
             elsif parsed_line[:z] && parsed_line[:f].nil? && parsed_line[:x].nil? && parsed_line[:y].nil? 
               puts "Raising marker::#{parsed_line}"
+              @stepper_z.backwards(5,25) if @stepper_z
               @servo.rotate(:up) if @servo
             elsif parsed_line[:z].nil? && parsed_line[:f] && parsed_line[:x].nil? && parsed_line[:y].nil? 
               # Set feed/spin rate
             else
               puts "Move Stepper::#{parsed_line}"
-              move_stepper(parsed_line,1)
+              move_stepper(parsed_line,speed)
             end
           elsif parsed_line[:g] == 2 || parsed_line[:g] == 3
             # Get my ARC on
-            # puts "DEBUG::#{parsed_line}"
             ignore = false
 
             x_start = @x
@@ -67,11 +65,7 @@ module Rotor
 
             if parsed_line[:i] && parsed_line[:j] && parsed_line[:r].nil?
               x_offset = parsed_line[:i]
-              # x_offset = 0.0001 if x_offset == 0.0
-              # x_offset = -0.0001 if x_offset == -0.0
               y_offset = parsed_line[:j]
-              # y_offset = 0.0001 if y_offset == 0.0
-              # y_offset = -0.0001 if y_offset == -0.0
 
               x_origin = x_offset + x_start
               y_origin = y_offset + y_start
@@ -84,7 +78,7 @@ module Rotor
 
             unless ignore
               distance = Math.sqrt((x_start - x_end) ** 2 + (y_start - y_end) ** 2)
-              number_of_precision = [distance.to_i,4].max
+              number_of_precision = [distance.to_i,8].max
               start_angle = Math.atan2((y_start - y_origin),(x_start - x_origin))
               end_angle = Math.atan2((y_end - y_origin),(x_end - x_origin))
 
@@ -108,7 +102,7 @@ module Rotor
               arc_line[:y] = radius * Math.sin(current_degrees) + y_origin
               arc_line[:z] = nil
               puts "Move Arc Stepper (#{line_num})::#{arc_line}::#{start_angle},#{end_angle}"
-              move_stepper(arc_line,1)
+              move_stepper(arc_line,speed)
             end unless ignore
 
           else
@@ -130,7 +124,6 @@ module Rotor
           # puts "Something else"
           puts "DEBUG::????? - Something else::#{parsed_line}"
         end
-        last_parsed_line = parsed_line
       end
     end
 
@@ -197,7 +190,7 @@ module Rotor
         end
         @z = @z_move
       end      
-      # puts "Moving to G#{parsed_line[:g]} #{@x_move}(#{@x_movement}), #{@y_move}(#{@y_movement}), #{@z_move}(#{@z_movement})"
+      puts "Moving to G#{parsed_line[:g]} #{@x_move}(#{@x_movement}), #{@y_move}(#{@y_movement}), #{@z_move}(#{@z_movement})"
       threads.each { |thr| thr.join }
       File.open("output.txt", 'a') { |file| file.write("#{@x_move},#{@y_move},#{@x_movement},#{@y_movement}\n") } if File.exists?("output.txt")
     end    

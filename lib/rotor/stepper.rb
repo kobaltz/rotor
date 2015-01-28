@@ -61,8 +61,8 @@ module Rotor
       puts "Setting #{direction} with Homing on GPIO #{@homing_switch}"
       @move = true
       while @move == true
-        backwards(1,158) if direction == :backwards #&& @io.read(@homing_switch) == @homing_normally
-        forward(1,158) if direction == :forward #&& @io.read(@homing_switch) == @homing_normally
+        backwards(1,1) if direction == :backwards && @io.read(@homing_switch) == @homing_normally
+        forward(1,1) if direction == :forward && @io.read(@homing_switch) == @homing_normally
         @move = false unless @io.read(@homing_switch) == @homing_normally
       end
     end

@@ -99,8 +99,15 @@ You can test the outputs of your GCODE and the XY plots it creates by Rotor.
 File.open("output.txt", 'wb') { |file| file.write("x,y,xm,ym\n") }
 gcode = Rotor::Gcode.new(nil,nil,nil,1,nil)
 gcode.open('output.nc')
-gcode.simulate
+gcode.simulate(accuracy=8,speed=1)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When using the simulate option on the Gcode class, you can now enter additional
+parameters which will increase accuracy as well as speed. The accuracy
+parameter will be used in the logic of determining how many steps in the arc 
+will occur. The Max of the distance calculation and accuracy variable will be
+the number of steps on a given arc. The speed parameter is in ms and will be
+the delay between steps.
 
 The goal of this gem is to make controlling your robotics easier than other
 solutions.
@@ -159,7 +166,7 @@ at 1).
 #gcode = Rotor::Gcode.new(stepper_x,stepper_y,stepper_z,1,servo)
 gcode = Rotor::Gcode.new(nil,nil,nil,1,nil)
 gcode.open('sample.nc')
-gcode.simulate
+gcode.simulate(accuracy=8,speed=1)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By passing nil into each stepper motor and servo, you can simulate the GCode
@@ -203,12 +210,12 @@ begin
 
   #My threaded rods move 1 inch per 4000 steps (Stepper Motor has 200 steps/rev and    the rod has 20 threads per inch)
 
-  stepper_x.forward(1,4000)
-  stepper_y.forward(1,4000)
+  stepper_x.forward(1,40)
+  stepper_y.forward(1,40)
 
   gcode = Rotor::Gcode.new(stepper_x,stepper_y,nil,1,servo)
   gcode.open('output.nc')
-  gcode.simulate
+  gcode.simulate(accuracy=8,speed=5)
 
 ensure
   servo.rotate(:up)
