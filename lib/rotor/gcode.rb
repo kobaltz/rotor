@@ -1,9 +1,10 @@
 module Rotor
   class Gcode
-    def initialize(stepper_x=nil,stepper_y=nil,stepper_z=nil,scale=1,servo=nil)
+    def initialize(stepper_x=nil,stepper_y=nil,stepper_z=nil,scale=1,servo=nil,fast_move=1)
       @stepper_x = stepper_x
       @stepper_y = stepper_y
       @stepper_z = stepper_z
+      @fast_move = fast_move
       @scale = scale
       @servo = servo
     end
@@ -26,33 +27,11 @@ module Rotor
         if parsed_line[:g]
           #Move to this origin point.
           if parsed_line[:g] == 0
-            if parsed_line[:z] && parsed_line[:f] && parsed_line[:x].nil? && parsed_line[:y].nil? 
-              puts "Lowering marker"
-              @servo.rotate(:down) if @servo
-              @stepper_z.forward(5,25) if @stepper_z
-            elsif parsed_line[:z] && parsed_line[:f].nil? && parsed_line[:x].nil? && parsed_line[:y].nil? 
-              puts "Raising marker::#{parsed_line}"
-              @stepper_z.backwards(5,25) if @stepper_z
-              @servo.rotate(:up) if @servo
-            else
-              puts "Move Stepper::#{parsed_line}"
-              move_stepper(parsed_line,speed)
-            end
+            puts "Move Stepper::#{parsed_line}"
+            move_stepper(parsed_line,@fast_move)
           elsif parsed_line[:g] == 1
-            if parsed_line[:z] && parsed_line[:f] && parsed_line[:x].nil? && parsed_line[:y].nil? 
-              puts "Lowering marker"
-              @servo.rotate(:down) if @servo
-              @stepper_z.forward(5,25) if @stepper_z
-            elsif parsed_line[:z] && parsed_line[:f].nil? && parsed_line[:x].nil? && parsed_line[:y].nil? 
-              puts "Raising marker::#{parsed_line}"
-              @stepper_z.backwards(5,25) if @stepper_z
-              @servo.rotate(:up) if @servo
-            elsif parsed_line[:z].nil? && parsed_line[:f] && parsed_line[:x].nil? && parsed_line[:y].nil? 
-              # Set feed/spin rate
-            else
-              puts "Move Stepper::#{parsed_line}"
-              move_stepper(parsed_line,speed)
-            end
+            puts "Move Stepper::#{parsed_line}"
+            move_stepper(parsed_line,speed)
           elsif parsed_line[:g] == 2 || parsed_line[:g] == 3
             # Get my ARC on
             ignore = false
@@ -147,7 +126,7 @@ module Rotor
           if @stepper_x # && @stepper_x.at_safe_area?
             threads << Thread.new { @stepper_x.backwards(delay, @x_movement) } 
           end
-        end
+        end unless @x_movement == 0
         @x = @x_move
       end
 
@@ -167,7 +146,7 @@ module Rotor
           if @stepper_y # && @stepper_y.at_safe_area?
             threads << Thread.new { @stepper_y.backwards(delay, @y_movement) } 
           end
-        end
+        end unless @y_movement == 0
         @y = @y_move
       end
 
@@ -179,20 +158,20 @@ module Rotor
 
         @z_movement = (@z_move - @z).abs
 
-        if @z_move.to_f < @z #move to the right
+        if @z_move.to_f > @z #move to the right
           if @stepper_z # && @stepper_z.at_safe_area?
             threads << Thread.new { @stepper_z.forward(delay, @z_movement) }
           end
-        elsif @z_move.to_f > @z #move to the left
+        elsif @z_move.to_f < @z #move to the left
           if @stepper_z # && @stepper_z.at_safe_area?
             threads << Thread.new { @stepper_z.backwards(delay, @z_movement) } 
           end
-        end
+        end unless @z_movement == 0
         @z = @z_move
       end      
       puts "Moving to G#{parsed_line[:g]} #{@x_move}(#{@x_movement}), #{@y_move}(#{@y_movement}), #{@z_move}(#{@z_movement})"
       threads.each { |thr| thr.join }
-      File.open("output.txt", 'a') { |file| file.write("#{@x_move},#{@y_move},#{@x_movement},#{@y_movement}\n") } if File.exists?("output.txt")
+      File.open("output.txt", 'a') { |file| file.write("#{@x_move},#{@y_move},#{@z_move},#{@x_movement},#{@y_movement},#{@z_movement}\n") } if File.exists?("output.txt")
     end    
 
     def parse_line(line)

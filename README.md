@@ -162,8 +162,13 @@ Enter each stepper motor (or nil if you do not have that particular axis) along
 with the scale (multiplies all coordinates by this. Typically you will keep this
 at 1).
 
+The last variable is the speed in which G0 will move. Typically, this move should
+be faster than your normal movement speed.
+
+    Rotor::Gcode.new(stepper_x=nil,stepper_y=nil,stepper_z=nil,scale=1,servo=nil,fast_move=1)
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#gcode = Rotor::Gcode.new(stepper_x,stepper_y,stepper_z,1,servo)
+#gcode = Rotor::Gcode.new(stepper_x,stepper_y,stepper_z,1,servo,1)
 gcode = Rotor::Gcode.new(nil,nil,nil,1,nil)
 gcode.open('sample.nc')
 gcode.simulate(accuracy=8,speed=1)
@@ -201,34 +206,27 @@ Here is the real world sample code that I am using to plot
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 require 'rotor'
 begin
-  stepper_x = Rotor::Stepper.new(23,12,17,24,nil,13,0,157.48)
-  stepper_y = Rotor::Stepper.new(25, 4,21,22,nil,19,0,157.48)
-  servo = Rotor::Servo.new(18)
+  stepper_x = Rotor::Stepper.new(23,12,17,24,nil,13 ,0,157.48)
+  stepper_y = Rotor::Stepper.new(25, 4,21,22,nil,19 ,0,157.48)
+  stepper_z = Rotor::Stepper.new(16,20, 6,26,nil,nil,0,157.48)
+  puts "Moving to home and soft origin"
+  stepper_z.forward(1,10) 
+  stepper_x.set_home(:forward)
+  stepper_y.set_home(:forward)
+  stepper_x.backwards(2,120)
+  stepper_y.backwards(2,70)
+  stepper_z.backwards(1,10)
+  puts "Running Code"
 
-  stepper_x.set_home(:backwards)
-  stepper_y.set_home(:backwards)
-
-  #My threaded rods move 1 inch per 4000 steps (Stepper Motor has 200 steps/rev and    the rod has 20 threads per inch)
-
-  stepper_x.forward(1,40)
-  stepper_y.forward(1,40)
-
-  gcode = Rotor::Gcode.new(stepper_x,stepper_y,nil,1,servo)
+  gcode = Rotor::Gcode.new(stepper_x,stepper_y,stepper_z,1,nil,1.5)
   gcode.open('output.nc')
-  gcode.simulate(accuracy=8,speed=5)
+  gcode.simulate(16,5)
 
 ensure
-  servo.rotate(:up)
-
-  stepper_x.set_home(:backwards)
-  stepper_y.set_home(:backwards)
-  stepper_x.forward(1,4000)
-  stepper_y.forward(1,4000)
-
   stepper_x.power_down
   stepper_y.power_down
-
-  [23,12,17,24,13,25,4,21,22,19,13].each do |pin|
+  stepper_z.power_down
+  [23,12,17,24,13,25,4,21,22,19,13,16,20,6,26].each do |pin|
    `echo #{pin} > /sys/class/gpio/unexport`
   end
 end
@@ -255,7 +253,7 @@ marker is entering into an object.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 File.open("output.txt", 'wb') { |file| file.write("x,y,xm,ym\n") }
-gcode = Rotor::Gcode.new(nil,nil,nil,1,nil)
+gcode = Rotor::Gcode.new(nil,nil,nil,1,nil,1)
 gcode.open('output.nc')
 gcode.simulate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
