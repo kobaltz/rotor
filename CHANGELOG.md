@@ -1,6 +1,22 @@
 Rotor (Ruby Motor)
 ==================
 
+Version 0.1.7
+-------------
+
+Updated GCode Simulator to take into account various movement delays. For example, 
+
+- X moves 10 steps
+- Y moves 100 steps
+- Delays are the same
+
+X would have finished it's movement much faster than Y.
+
+Now, the delay will be automatically adjusted for the maximum movement and will start
+and now end at the same time (hopefully).
+
+Updated GCode Simulator to add a small delay for Z Movement (500 * Delay) milliseconds to allow time for puncture.
+
 Version 0.1.6
 -------------
 
