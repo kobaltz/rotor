@@ -42,16 +42,21 @@ module Rotor
             y_start = @y
             y_end = parsed_line[:y]
 
-            if parsed_line[:i] && parsed_line[:j] && parsed_line[:r].nil?
+            z_start = @z
+            z_end = parsed_line[:z]
+
+            if (parsed_line[:i] || parsed_line[:j] || parsed_line[:k]) && parsed_line[:r].nil?
               x_offset = parsed_line[:i]
               y_offset = parsed_line[:j]
+              z_offset = parsed_line[:k]
 
               x_origin = x_offset + x_start
               y_origin = y_offset + y_start
+              z_origin = z_offset + z_start
 
               radius = Math.sqrt((x_start - x_origin) ** 2 + (y_start - y_origin) ** 2)
        
-            elsif parsed_line[:i].nil? && parsed_line[:j].nil? && parsed_line[:r]
+            elsif parsed_line[:i].nil? && parsed_line[:j].nil? && parsed_line[:k].nil? && parsed_line[:r]
               ignore = true
             end
 
@@ -116,7 +121,6 @@ module Rotor
         @x_move ||= 0
         @x_move *= @scale
         @x_movement = (@x_move - @x).abs
-        @x = @x_move
       end
 
       @y_move = nil    
@@ -125,7 +129,6 @@ module Rotor
         @y_move ||= 0
         @y_move *= @scale
         @y_movement = (@y_move - @y).abs
-        @y = @y_move
       end
 
       @z_move = nil    
@@ -134,7 +137,6 @@ module Rotor
         @z_move ||= 0
         @z_move *= @scale
         @z_movement = (@z_move - @z).abs
-        @z = @z_move
       end
 
       comp_delay_calc = [@x_movement,@y_movement,@z_movement].max
@@ -150,6 +152,7 @@ module Rotor
             threads << Thread.new { @stepper_x.backwards(x_delay, @x_movement) } 
           end
         end unless @x_movement == 0
+        @x = @x_move
       end
 
       if parsed_line[:y]
@@ -163,6 +166,7 @@ module Rotor
             threads << Thread.new { @stepper_y.backwards(y_delay, @y_movement) } 
           end
         end unless @y_movement == 0
+        @y = @y_move
       end
 
       if parsed_line[:z]
@@ -176,6 +180,7 @@ module Rotor
             threads << Thread.new { @stepper_z.backwards(z_delay, @z_movement) } 
           end
         end unless @z_movement == 0
+        @z = @z_move
       end      
       puts "Moving to G#{parsed_line[:g]} #{@x_move}(#{@x_movement}), #{@y_move}(#{@y_movement}), #{@z_move}(#{@z_movement})"
       sleep (delay * 500) if @x_move == 0.0 && @y_move == 0.0 && @z_move > 0.0

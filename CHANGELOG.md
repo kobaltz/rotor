@@ -1,6 +1,11 @@
 Rotor (Ruby Motor)
 ==================
 
+Version 0.1.8
+-------------
+
+Fixed bug on various movement delays.
+
 Version 0.1.7
 -------------
 
