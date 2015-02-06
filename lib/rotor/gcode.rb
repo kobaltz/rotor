@@ -52,7 +52,7 @@ module Rotor
 
               x_origin = x_offset + x_start
               y_origin = y_offset + y_start
-              z_origin = z_offset + z_start
+              # z_origin = z_offset + z_start
 
               radius = Math.sqrt((x_start - x_origin) ** 2 + (y_start - y_origin) ** 2)
        
@@ -139,45 +139,41 @@ module Rotor
         @z_movement = (@z_move - @z).abs
       end
 
-      comp_delay_calc = [@x_movement,@y_movement,@z_movement].max
 
       if parsed_line[:x]
-        x_delay = comp_delay_calc * delay / @x_movement
         if @x_move.to_f < @x #move to the right
           if @stepper_x # && @stepper_x.at_safe_area?
-            threads << Thread.new { @stepper_x.forward(x_delay, @x_movement) }
+            threads << Thread.new { @stepper_x.forward(delay, @x_movement) }
           end
         elsif @x_move.to_f > @x #move to the left
           if @stepper_x # && @stepper_x.at_safe_area?
-            threads << Thread.new { @stepper_x.backwards(x_delay, @x_movement) } 
+            threads << Thread.new { @stepper_x.backwards(delay, @x_movement) } 
           end
         end unless @x_movement == 0
         @x = @x_move
       end
 
       if parsed_line[:y]
-        y_delay = comp_delay_calc * delay / @y_movement
         if @y_move.to_f < @y #move to the right
           if @stepper_y # && @stepper_y.at_safe_area?
-            threads << Thread.new { @stepper_y.forward(y_delay, @y_movement) }
+            threads << Thread.new { @stepper_y.forward(delay, @y_movement) }
           end
         elsif @y_move.to_f > @y #move to the left
           if @stepper_y # && @stepper_y.at_safe_area?
-            threads << Thread.new { @stepper_y.backwards(y_delay, @y_movement) } 
+            threads << Thread.new { @stepper_y.backwards(delay, @y_movement) } 
           end
         end unless @y_movement == 0
         @y = @y_move
       end
 
       if parsed_line[:z]
-        z_delay = comp_delay_calc * delay / @z_movement
         if @z_move.to_f > @z #move to the right
           if @stepper_z # && @stepper_z.at_safe_area?
-            threads << Thread.new { @stepper_z.forward(z_delay, @z_movement) }
+            threads << Thread.new { @stepper_z.forward(delay, @z_movement) }
           end
         elsif @z_move.to_f < @z #move to the left
           if @stepper_z # && @stepper_z.at_safe_area?
-            threads << Thread.new { @stepper_z.backwards(z_delay, @z_movement) } 
+            threads << Thread.new { @stepper_z.backwards(delay, @z_movement) } 
           end
         end unless @z_movement == 0
         @z = @z_move
