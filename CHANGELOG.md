@@ -1,6 +1,16 @@
 Rotor (Ruby Motor)
 ==================
 
+Version 0.2.0
+-------------
+
+My only experience with GCode is stuff that I have generated. However, upon experimenting with
+various other types of GCode and generators, I have found that the repetition of G0 and G1 is not
+always necessary. This version takes into account the previous command if no new one is provided for
+G movements.
+
+I've also added back in the movement delays that were causing some problems before.
+
 Version 0.1.9
 -------------
 

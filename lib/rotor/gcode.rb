@@ -21,16 +21,17 @@ module Rotor
       line_num = 0
 
       @file.each_line do |line|
+        line[0..2] = @previous_command if line[0..2] == "   "
         parsed_line = parse_line(line)
         
         line_num += 1
         if parsed_line[:g]
           #Move to this origin point.
           if parsed_line[:g] == 0
-            puts "Move Stepper::#{parsed_line}"
+            puts "Move Stepper (#{line_num})::#{parsed_line}"
             move_stepper(parsed_line,@fast_move)
           elsif parsed_line[:g] == 1
-            puts "Move Stepper::#{parsed_line}"
+            puts "Move Stepper (#{line_num})::#{parsed_line}"
             move_stepper(parsed_line,speed)
           elsif parsed_line[:g] == 2 || parsed_line[:g] == 3
             # Get my ARC on
@@ -85,14 +86,14 @@ module Rotor
               arc_line[:x] = radius * Math.cos(current_degrees) + x_origin
               arc_line[:y] = radius * Math.sin(current_degrees) + y_origin
               arc_line[:z] = nil
-              puts "Move Arc Stepper (#{line_num})::#{arc_line}::#{start_angle},#{end_angle}"
+              # puts "Move Arc Stepper (#{line_num})::#{arc_line}::#{start_angle},#{end_angle}"
               move_stepper(arc_line,speed)
             end unless ignore
 
           else
-            # puts "GLINE - Something else"
-            puts "DEBUG::GLINE - Something else::#{parsed_line}"
+            # puts "DEBUG::GLINE - Something else::#{parsed_line}"
           end
+          @previous_command = line[0..2]
         elsif parsed_line[:m]
           if line[0..2] == "M03"
             puts "Lowering marker"
@@ -101,13 +102,11 @@ module Rotor
             puts "Lifting marker"
             @servo.rotate(:up) if @servo
           else
-            # puts "MLINE - Something else"
-            puts "DEBUG::MLINE - Something else::#{parsed_line}"
+            # puts "DEBUG::MLINE - Something else::#{parsed_line}"
           end
         else
-          # puts "Something else"
-          puts "DEBUG::????? - Something else::#{parsed_line}"
-        end
+          # puts "DEBUG::????? - Something else::#{parsed_line}"
+        end        
       end
     end
 
@@ -115,12 +114,15 @@ module Rotor
 
     def move_stepper(parsed_line,delay)
       threads = []
+      comp_delay_calc = []
+
       @x_move = nil    
       if parsed_line[:x]
         @x_move = parsed_line[:x]        
         @x_move ||= 0
         @x_move *= @scale
         @x_movement = (@x_move - @x).abs
+        comp_delay_calc << @x_movement
       end
 
       @y_move = nil    
@@ -129,6 +131,7 @@ module Rotor
         @y_move ||= 0
         @y_move *= @scale
         @y_movement = (@y_move - @y).abs
+        comp_delay_calc << @y_movement
       end
 
       @z_move = nil    
@@ -137,10 +140,12 @@ module Rotor
         @z_move ||= 0
         @z_move *= @scale
         @z_movement = (@z_move - @z).abs
+        comp_delay_calc << @z_movement
       end
 
-
       if parsed_line[:x]
+        x_delay = comp_delay_calc.max * delay / @x_movement
+        x_delay = delay if x_delay == 0.0
         if @x_move.to_f < @x #move to the right
           if @stepper_x # && @stepper_x.at_safe_area?
             threads << Thread.new { @stepper_x.forward(delay, @x_movement) }
@@ -152,36 +157,40 @@ module Rotor
         end unless @x_movement == 0
         @x = @x_move
       end
+      @x_move ||= @x
 
       if parsed_line[:y]
+        y_delay = comp_delay_calc.max * delay / @y_movement
+        y_delay = delay if y_delay == 0.0        
         if @y_move.to_f < @y #move to the right
           if @stepper_y # && @stepper_y.at_safe_area?
-            threads << Thread.new { @stepper_y.forward(delay, @y_movement) }
+            threads << Thread.new { @stepper_y.forward(y_delay, @y_movement) }
           end
         elsif @y_move.to_f > @y #move to the left
           if @stepper_y # && @stepper_y.at_safe_area?
-            threads << Thread.new { @stepper_y.backwards(delay, @y_movement) } 
+            threads << Thread.new { @stepper_y.backwards(y_delay, @y_movement) } 
           end
         end unless @y_movement == 0
         @y = @y_move
       end
+      @y_move ||= @y
 
       if parsed_line[:z]
+        z_delay = comp_delay_calc.max * delay / @z_movement
+        z_delay = delay if z_delay == 0.0        
         if @z_move.to_f > @z #move to the right
           if @stepper_z # && @stepper_z.at_safe_area?
-            threads << Thread.new { @stepper_z.forward(delay, @z_movement) }
+            threads << Thread.new { @stepper_z.forward(z_delay, @z_movement) }
           end
         elsif @z_move.to_f < @z #move to the left
           if @stepper_z # && @stepper_z.at_safe_area?
-            threads << Thread.new { @stepper_z.backwards(delay, @z_movement) } 
+            threads << Thread.new { @stepper_z.backwards(z_delay, @z_movement) } 
           end
         end unless @z_movement == 0
         @z = @z_move
-      end      
-      puts "Moving to G#{parsed_line[:g]} #{@x_move}(#{@x_movement}), #{@y_move}(#{@y_movement}), #{@z_move}(#{@z_movement})"
-      sleep (delay * 500) if @x_move == 0.0 && @y_move == 0.0 && @z_move > 0.0
+      end
+      @z_move ||= @z
       threads.each { |thr| thr.join }
-      sleep (delay * 500) if @x_move == 0.0 && @y_move == 0.0 && @z_move > 0.0
       File.open("output.txt", 'a') { |file| file.write("#{@x_move},#{@y_move},#{@z_move},#{@x_movement},#{@y_movement},#{@z_movement}\n") } if File.exists?("output.txt")
     end    
 
